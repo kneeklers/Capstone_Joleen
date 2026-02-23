@@ -87,7 +87,13 @@ python app.py
 
 You’ll see the live feed with defect boxes and labels. If the model/labels are missing, the app still streams video without detections.
 
-**Camera (Pi Camera Module 3):** On Raspberry Pi the app tries **picamera2** first for the official Camera Module 3. If you see "No camera found", do this:
+**Camera (Pi Camera Module 3) – easiest:** If **rpicam-hello** works but the app says "No camera", use the **same C camera stack** (no Python bindings):
+```bash
+USE_RPICAM=1 python app.py
+```
+That runs **rpicam-vid** in the background and streams its output into the app. No picamera2 or libcamera Python packages needed.
+
+**Alternative (picamera2):** On Raspberry Pi the app can also use **picamera2** for the official Camera Module 3. If you see "No camera found", do this:
 
 1. **Enable the camera:** `sudo raspi-config` → **Interface Options** → **Camera** → **Enable** → reboot.
 2. **Test the camera:** `libcamera-hello` (or `libcamera-hello -t 2000`). If this fails, the camera or cable isn’t detected.

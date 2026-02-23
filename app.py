@@ -9,29 +9,32 @@ Place best_float32.tflite and labels.txt in this directory (or set MODEL_PATH / 
 
 import os
 import platform
+import subprocess
 import time
 from pathlib import Path
 from threading import Lock
 
 import cv2
+import numpy as np
 from flask import Flask, Response, render_template
 
 from inference import DefectDetector, draw_detections
 
 app = Flask(__name__)
 
-# Camera: on Pi (aarch64) we prefer picamera2 for Pi Camera Module 3 / CSI. Set USE_PICAMERA2=0 to use OpenCV instead.
+# Camera: USE_RPICAM=1 uses rpicam-vid (same stack as rpicam-hello, no Python bindings). Else try picamera2, then OpenCV.
 CAMERA_INDEX = int(os.environ.get("CAMERA_INDEX", "0"))
 FRAME_SIZE = (640, 480)
+USE_RPICAM = os.environ.get("USE_RPICAM", "").strip().lower() in ("1", "true", "yes")
 _force_picam2 = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("1", "true", "yes")
 _force_opencv = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("0", "false", "no")
-USE_PICAMERA2 = _force_picam2 or (platform.machine() == "aarch64" and not _force_opencv)
-# Run detection every N frames to balance FPS (1 = every frame, 2 = every other, etc.)
+USE_PICAMERA2 = _force_picam2 or (platform.machine() == "aarch64" and not _force_opencv and not USE_RPICAM)
 DETECT_EVERY_N_FRAME = 1
 
 _camera_lock = Lock()
 _camera = None
 _picam2 = None
+_rpicam_proc = None
 _detector = None
 
 
@@ -97,14 +100,68 @@ def _try_picamera2():
         return None
 
 
+def _try_rpicam_vid():
+    """Use rpicam-vid (same C stack as rpicam-hello). No Python picamera2/libcamera needed."""
+    global _rpicam_proc
+    for cmd in (
+        ["rpicam-vid", "-t", "0", "-n", "--width", str(FRAME_SIZE[0]), "--height", str(FRAME_SIZE[1]), "--codec", "mjpeg", "-o", "-"],
+        ["libcamera-vid", "-t", "0", "-n", "--width", str(FRAME_SIZE[0]), "--height", str(FRAME_SIZE[1]), "--codec", "mjpeg", "-o", "-"],
+    ):
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                bufsize=0,
+            )
+            # Give it a moment to start
+            time.sleep(1.5)
+            if proc.poll() is not None:
+                continue
+            _rpicam_proc = proc
+            print("[Camera] Using rpicam-vid (same as rpicam-hello). No Python camera bindings needed.")
+            return proc
+        except FileNotFoundError:
+            continue
+    return None
+
+
+def _read_rpicam_frame(proc):
+    """Read one MJPEG frame from rpicam-vid stdout (JPEG start 0xFFD8, end 0xFFD9)."""
+    SOI, EOI = b"\xff\xd8", b"\xff\xd9"
+    buf = b""
+    while True:
+        chunk = proc.stdout.read(65536)
+        if not chunk:
+            return None
+        buf += chunk
+        if SOI in buf and EOI in buf:
+            start = buf.index(SOI)
+            end = buf.index(EOI, start) + 2
+            jpeg = buf[start:end]
+            buf = buf[end:]
+            arr = np.frombuffer(jpeg, dtype=np.uint8)
+            frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if frame is not None:
+                return frame
+    return None
+
+
 def get_camera():
-    """Return OpenCV VideoCapture or Picamera2. On Pi (aarch64) prefer Picamera2 for Camera Module 3."""
-    global _camera, _picam2
+    """Return (backend, handle). Backend: opencv, picam2, or rpicam (rpicam-vid subprocess)."""
+    global _camera, _picam2, _rpicam_proc
     with _camera_lock:
         if _camera is not None:
             return ("opencv", _camera)
         if _picam2 is not None:
             return ("picam2", _picam2)
+        if _rpicam_proc is not None:
+            return ("rpicam", _rpicam_proc)
+        # Prefer rpicam-vid when requested (same stack as rpicam-hello, no Python bindings)
+        if USE_RPICAM:
+            _rpicam_proc = _try_rpicam_vid()
+            if _rpicam_proc is not None:
+                return ("rpicam", _rpicam_proc)
         if USE_PICAMERA2:
             _picam2 = _try_picamera2()
             if _picam2 is not None:
@@ -114,11 +171,15 @@ def get_camera():
             _camera = _try_opencv_camera()
             if _camera is None:
                 _picam2 = _try_picamera2()
-                if _picam2 is not None:
-                    return ("picam2", _picam2)
+                if _picam2 is None and platform.machine() == "aarch64":
+                    _rpicam_proc = _try_rpicam_vid()
+                    if _rpicam_proc is not None:
+                        return ("rpicam", _rpicam_proc)
         if _camera is not None:
             return ("opencv", _camera)
-        print("[Camera] No camera available. See messages above. Try: USE_PICAMERA2=1 python app.py  or  USE_PICAMERA2=0 python app.py")
+        if _picam2 is not None:
+            return ("picam2", _picam2)
+        print("[Camera] No camera available. On Pi with Camera Module 3, try: USE_RPICAM=1 python app.py")
         return (None, None)
 
 
@@ -171,6 +232,12 @@ def generate_frames():
             success, frame = cam.read()
             if not success:
                 break
+        elif backend == "rpicam":
+            frame = _read_rpicam_frame(cam)
+            if frame is None:
+                break
+            if (frame.shape[1], frame.shape[0]) != FRAME_SIZE:
+                frame = cv2.resize(frame, FRAME_SIZE)
         else:
             try:
                 frame = cam.capture_array()
