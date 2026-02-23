@@ -14,83 +14,60 @@
       color: #e0e0e0;
       min-height: 100vh;
     }
-    h1 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-    .sub {
-      color: #888;
-      font-size: 0.9rem;
+    h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+    .feed-wrap {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 100%;
+      display: inline-block;
       margin-bottom: 1rem;
     }
-    .grid-3x3 {
+    .feed-wrap img { display: block; max-width: 100%; height: auto; }
+    .zone-section { margin-bottom: 1rem; }
+    .zone-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
+    .zone-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       grid-template-rows: auto auto auto;
-      gap: 8px;
-      max-width: 1200px;
-      margin-bottom: 1rem;
+      gap: 6px;
+      max-width: 360px;
     }
-    .cell {
+    .zone-cell {
       background: #252525;
       border: 1px solid #333;
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 0.5rem;
-      min-height: 120px;
+      min-height: 64px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      text-align: center;
     }
-    .cell-label {
-      font-size: 0.75rem;
-      color: #666;
-      margin-bottom: 0.25rem;
-    }
-    .cell.feed {
-      background: #000;
-      grid-column: 2;
-      grid-row: 2;
-      padding: 0;
-    }
-    .cell.feed img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-    .cell.log {
-      align-items: stretch;
-      justify-content: flex-start;
-    }
+    .zone-cell.has-defects { background: #1e3a2f; border-color: #22c55e; }
+    .zone-cell .name { font-size: 0.7rem; color: #888; }
+    .zone-cell .count { font-size: 1.25rem; font-weight: 600; color: #e0e0e0; }
+    .zone-cell.has-defects .count { color: #22c55e; }
+    .log-section { margin-bottom: 1rem; }
+    .log-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
     .log-content {
       font-family: ui-monospace, monospace;
       font-size: 0.75rem;
       color: #94a3b8;
       overflow-y: auto;
-      flex: 1;
+      max-height: 200px;
+      padding: 0.5rem;
+      background: #252525;
+      border-radius: 6px;
+      border: 1px solid #333;
       white-space: pre-wrap;
       word-break: break-all;
     }
-    .log-content:empty::before {
-      content: 'Detection log (when analysis is on)';
-      color: #555;
-    }
-    .status {
-      margin-top: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      background: #2a2a2a;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      color: #aaa;
-    }
-    .controls {
-      margin-top: 1rem;
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-    }
+    .log-content:empty::before { content: 'Detection log (when analysis is on)'; color: #555; }
+    .status { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; color: #aaa; }
+    .controls { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; }
     .controls button {
       padding: 0.5rem 1.25rem;
       font-size: 1rem;
@@ -99,43 +76,42 @@
       cursor: pointer;
       font-weight: 500;
     }
-    .controls button.start {
-      background: #22c55e;
-      color: #fff;
-    }
+    .controls button.start { background: #22c55e; color: #fff; }
     .controls button.start:hover { background: #16a34a; }
-    .controls button.stop {
-      background: #ef4444;
-      color: #fff;
-    }
+    .controls button.stop { background: #ef4444; color: #fff; }
     .controls button.stop:hover { background: #dc2626; }
-    .analysis-status {
-      font-size: 0.9rem;
-      color: #94a3b8;
-    }
+    .analysis-status { font-size: 0.9rem; color: #94a3b8; }
     .analysis-status.on { color: #22c55e; }
     .analysis-status.off { color: #64748b; }
   </style>
 </head>
 <body>
   <h1>Live Defect Detection</h1>
-  <p class="sub">Raspberry Pi 5 — 3×3 layout. Centre = livestream; middle right = detection log.</p>
+  <p class="sub">Raspberry Pi 5 — livestream with 3×3 zone grid. Defects are assigned to a zone by position.</p>
 
-  <div class="grid-3x3">
-    <div class="cell"><span class="cell-label">Top left</span></div>
-    <div class="cell"><span class="cell-label">Top middle</span></div>
-    <div class="cell"><span class="cell-label">Top right</span></div>
-    <div class="cell"><span class="cell-label">Middle left</span></div>
-    <div class="cell feed">
-      <img src="/video_feed" alt="Live camera feed" />
+  <div class="feed-wrap">
+    <img src="/video_feed" alt="Live camera feed" />
+  </div>
+
+  <div class="zone-section">
+    <h2>Defect location (3×3 grid)</h2>
+    <p style="font-size:0.85rem;color:#888;margin:0 0 0.5rem 0;">Count per zone — matches the grid drawn on the stream when analysis is on.</p>
+    <div class="zone-grid" id="zone-grid">
+      <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
+      <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
     </div>
-    <div class="cell log">
-      <span class="cell-label">Detection log</span>
-      <div class="log-content" id="log-content"></div>
-    </div>
-    <div class="cell"><span class="cell-label">Bottom left</span></div>
-    <div class="cell"><span class="cell-label">Bottom middle</span></div>
-    <div class="cell"><span class="cell-label">Bottom right</span></div>
+  </div>
+
+  <div class="log-section">
+    <h2>Detection log</h2>
+    <div class="log-content" id="log-content"></div>
   </div>
 
   <div class="controls">
@@ -144,14 +120,16 @@
     <span class="analysis-status off" id="analysis-status">Analysis: off — plain livestream</span>
   </div>
 
-  <p class="status">Start = defect detection + bounding boxes + webpage log. Stop = normal livestream only.</p>
+  <p class="status">Start = detection + 3×3 grid on stream + zone counts + log. Stop = livestream only; zone counts reset.</p>
 
   <script>
     const btnStart = document.getElementById('btn-start');
     const btnStop = document.getElementById('btn-stop');
     const statusEl = document.getElementById('analysis-status');
     const logContent = document.getElementById('log-content');
+    const zoneCells = document.querySelectorAll('#zone-grid .zone-cell');
     let logInterval = null;
+    let zoneInterval = null;
 
     function setAnalysis(enabled) {
       fetch('/api/analysis?enabled=' + (enabled ? '1' : '0'))
@@ -161,11 +139,30 @@
           statusEl.className = 'analysis-status ' + (data.analysis ? 'on' : 'off');
           if (data.analysis) {
             if (!logInterval) logInterval = setInterval(pollLogs, 1500);
+            if (!zoneInterval) zoneInterval = setInterval(pollZones, 1500);
+            pollZones();
           } else {
             if (logInterval) { clearInterval(logInterval); logInterval = null; }
+            if (zoneInterval) { clearInterval(zoneInterval); zoneInterval = null; }
+            pollZones();
           }
         })
         .catch(() => { statusEl.textContent = 'Error'; });
+    }
+
+    function pollZones() {
+      fetch('/api/zones')
+        .then(r => r.json())
+        .then(data => {
+          const zones = data.zones || {};
+          zoneCells.forEach(el => {
+            const zone = el.getAttribute('data-zone');
+            const count = zones[zone] || 0;
+            el.querySelector('.count').textContent = count;
+            el.classList.toggle('has-defects', count > 0);
+          });
+        })
+        .catch(() => {});
     }
 
     function pollLogs() {
@@ -181,6 +178,7 @@
     btnStart.addEventListener('click', () => setAnalysis(true));
     btnStop.addEventListener('click', () => setAnalysis(false));
     pollLogs();
+    pollZones();
   </script>
 </body>
 </html>

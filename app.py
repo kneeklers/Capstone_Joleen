@@ -57,6 +57,24 @@ _log_lines = []
 _log_lock = Lock()
 _LOG_MAX = 200
 
+# 3x3 grid zones: track defect location (row, col) -> name.
+ZONE_NAMES = [
+    ["top_left", "top_middle", "top_right"],
+    ["middle_left", "centre", "middle_right"],
+    ["bottom_left", "bottom_middle", "bottom_right"],
+]
+_zone_counts = {name: 0 for row in ZONE_NAMES for name in row}
+_zone_lock = Lock()
+
+
+def _bbox_zone(x1, y1, x2, y2, width, height):
+    """Return zone name for bbox center in a 3x3 grid (0,0 top-left)."""
+    cx = (x1 + x2) / 2
+    cy = (y1 + y2) / 2
+    col = min(2, max(0, int(cx / (width / 3))))
+    row = min(2, max(0, int(cy / (height / 3))))
+    return ZONE_NAMES[row][col]
+
 
 def _try_opencv_camera():
     # Pi Camera (rp1-cfe) /dev/video0 supports YUYV, BGR3, RGB3 - no MJPEG. Set format then size.
@@ -285,9 +303,13 @@ def generate_frames():
             do_analysis = _analysis_enabled
         if do_analysis and detector is not None and (frame_count % DETECT_EVERY_N_FRAME == 0):
             last_detections = detector.detect(frame)
+            h, w = frame.shape[:2]
             if last_detections and (time.time() - last_print_time) >= 1.0:
                 for x1, y1, x2, y2, name, conf in last_detections:
-                    line = f"[Defect] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})"
+                    zone = _bbox_zone(x1, y1, x2, y2, w, h)
+                    with _zone_lock:
+                        _zone_counts[zone] = _zone_counts.get(zone, 0) + 1
+                    line = f"[{zone}] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})"
                     print(line)
                     with _log_lock:
                         _log_lines.append(line)
@@ -296,6 +318,15 @@ def generate_frames():
                 last_print_time = time.time()
         elif not do_analysis:
             last_detections = []
+        if do_analysis:
+            # Draw 3x3 grid on stream so zones are visible
+            h, w = frame.shape[:2]
+            for i in (1, 2):
+                x = int(w * i / 3)
+                cv2.line(frame, (x, 0), (x, h), (80, 80, 80), 1)
+            for i in (1, 2):
+                y = int(h * i / 3)
+                cv2.line(frame, (0, y), (w, y), (80, 80, 80), 1)
         if last_detections:
             draw_detections(frame, last_detections, color=(0, 255, 0), thickness=2, font_scale=0.65)
         frame_count += 1
@@ -316,14 +347,24 @@ def api_logs():
         return jsonify({"lines": list(_log_lines)})
 
 
+@app.route("/api/zones", methods=["GET"])
+def api_zones():
+    """Return defect count per 3x3 zone (for location plot). Reset when analysis is stopped."""
+    with _zone_lock:
+        return jsonify({"zones": dict(_zone_counts)})
+
+
 @app.route("/api/analysis", methods=["GET"])
 def api_analysis():
     """GET ?enabled=1 to start analysis (detection + logging), ?enabled=0 to stop (plain livestream)."""
-    global _analysis_enabled
+    global _analysis_enabled, _zone_counts
     enabled = request.args.get("enabled")
     if enabled is not None:
         with _analysis_lock:
             _analysis_enabled = str(enabled).strip().lower() in ("1", "true", "yes")
+        if not _analysis_enabled:
+            with _zone_lock:
+                _zone_counts = {name: 0 for row in ZONE_NAMES for name in row}
     with _analysis_lock:
         return jsonify({"analysis": _analysis_enabled})
 
