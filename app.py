@@ -56,8 +56,21 @@ def _try_picamera2():
     try:
         from picamera2 import Picamera2
     except ImportError as e:
-        print("[Camera] Picamera2: not installed. Install with: pip install picamera2  (in your venv)")
-        print("         ", e)
+        err = str(e)
+        if "libcamera" in err:
+            print("[Camera] Picamera2 needs the libcamera Python bindings. Run:")
+            print("           sudo apt install -y python3-picamera2 python3-libcamera")
+            print("         Then recreate venv with system Python:  python3 -m venv venv --system-site-packages")
+            print("           source venv/bin/activate && pip install -r requirements.txt")
+        elif "picamera2" in err:
+            print("[Camera] Picamera2 not visible in this venv. Apt's python3-picamera2 is for system Python.")
+            print("         Recreate venv with system Python (so it sees apt packages):")
+            print("           deactivate && rm -rf venv")
+            print("           python3 -m venv venv --system-site-packages")
+            print("           source venv/bin/activate && pip install -r requirements.txt")
+            print("         If you used python3.11, apt's picamera2 may be for a different version; use python3 instead.")
+        else:
+            print("[Camera] Picamera2: not installed.", e)
         return None
     try:
         picam2 = Picamera2()

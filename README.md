@@ -91,9 +91,25 @@ You’ll see the live feed with defect boxes and labels. If the model/labels are
 
 1. **Enable the camera:** `sudo raspi-config` → **Interface Options** → **Camera** → **Enable** → reboot.
 2. **Test the camera:** `libcamera-hello` (or `libcamera-hello -t 2000`). If this fails, the camera or cable isn’t detected.
-3. **Install picamera2 for your venv:**  
-   `pip install picamera2`  
-   (If you use system Python instead of a venv, you can use `sudo apt install -y python3-picamera2`.)
+3. **Picamera2 and "No module named 'libcamera'"**  
+   The **pip** `picamera2` package does not include the Pi’s camera stack; you need the **system** packages. Install one of these (depends on your distro):
+   ```bash
+   sudo apt install -y python3-picamera2 python3-libcamera
+   ```
+   (If `python3-libcamera` is not found, run `apt search python3 libcamera` and install the matching package.)
+   If that reports “no installation candidate”, try:
+   ```bash
+   sudo apt install -y python3-libcamera
+   apt search libcamera   # to see other camera packages
+   ```
+   Then recreate your venv with system site-packages:
+   ```bash
+   deactivate && rm -rf venv
+   python3 -m venv venv --system-site-packages
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+   Do **not** `pip install picamera2`; use the apt-installed one.
 4. Run again: `python app.py`. Check the console for `[Camera]` messages to see whether OpenCV or Picamera2 was tried and why it failed.
 5. Force backend: `USE_PICAMERA2=1 python app.py` to prefer Pi Cam, or `USE_PICAMERA2=0 python app.py` to use OpenCV only (e.g. USB webcam).
 
