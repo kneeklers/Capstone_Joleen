@@ -29,7 +29,7 @@ from threading import Lock
 
 import cv2
 import numpy as np
-from flask import Flask, Response, render_template
+from flask import Flask, Response, request, jsonify, render_template
 
 from inference import DefectDetector, draw_detections
 
@@ -47,6 +47,10 @@ _camera = None
 _picam2 = None
 _rpicam_proc = None
 _detector = None
+
+# Start/Stop analysis: when True, run detection + draw boxes + log; when False, plain livestream only.
+_analysis_enabled = False
+_analysis_lock = Lock()
 
 
 def _try_opencv_camera():
@@ -272,12 +276,16 @@ def generate_frames():
                     frame = cv2.resize(frame, FRAME_SIZE)
             except Exception:
                 break
-        if detector is not None and (frame_count % DETECT_EVERY_N_FRAME == 0):
+        with _analysis_lock:
+            do_analysis = _analysis_enabled
+        if do_analysis and detector is not None and (frame_count % DETECT_EVERY_N_FRAME == 0):
             last_detections = detector.detect(frame)
             if last_detections and (time.time() - last_print_time) >= 1.0:
                 for x1, y1, x2, y2, name, conf in last_detections:
                     print(f"[Defect] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})")
                 last_print_time = time.time()
+        elif not do_analysis:
+            last_detections = []
         if last_detections:
             draw_detections(frame, last_detections, color=(0, 255, 0), thickness=2, font_scale=0.65)
         frame_count += 1
@@ -289,6 +297,18 @@ def generate_frames():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/api/analysis", methods=["GET"])
+def api_analysis():
+    """GET ?enabled=1 to start analysis (detection + logging), ?enabled=0 to stop (plain livestream)."""
+    global _analysis_enabled
+    enabled = request.args.get("enabled")
+    if enabled is not None:
+        with _analysis_lock:
+            _analysis_enabled = str(enabled).strip().lower() in ("1", "true", "yes")
+    with _analysis_lock:
+        return jsonify({"analysis": _analysis_enabled})
 
 
 @app.route("/video_feed")
