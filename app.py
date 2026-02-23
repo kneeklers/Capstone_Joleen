@@ -7,6 +7,19 @@ Then open http://localhost:5000 (or http://<pi-ip>:5000 from another device)
 Place best_float32.tflite and labels.txt in this directory (or set MODEL_PATH / LABELS_PATH).
 """
 
+# Python 3.12+ removed the "imp" module; TensorFlow's flatbuffers still expects it. Provide a minimal shim.
+import sys
+if sys.version_info >= (3, 12):
+    import importlib.util
+    _imp = type(sys)("imp")
+    def _find_module(name, path=None):
+        try:
+            return importlib.util.find_spec(name)
+        except ModuleNotFoundError:
+            return None
+    _imp.find_module = _find_module
+    sys.modules["imp"] = _imp
+
 import os
 import platform
 import subprocess
