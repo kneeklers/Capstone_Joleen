@@ -16,13 +16,19 @@
     }
     h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; }
     .sub { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+    .stream-row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
     .feed-wrap {
       background: #000;
       border-radius: 8px;
       overflow: hidden;
-      max-width: 100%;
-      display: inline-block;
-      margin-bottom: 1rem;
+      flex: 1 1 480px;
+      min-width: 0;
     }
     .feed-wrap img { display: block; max-width: 100%; height: auto; }
     .zone-section { margin-bottom: 1rem; }
@@ -50,22 +56,41 @@
     .zone-cell .name { font-size: 0.7rem; color: #888; }
     .zone-cell .count { font-size: 1.25rem; font-weight: 600; color: #e0e0e0; }
     .zone-cell.has-defects .count { color: #22c55e; }
-    .log-section { margin-bottom: 1rem; }
+    .log-section {
+      flex: 0 1 320px;
+      min-width: 280px;
+    }
     .log-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
-    .log-content {
-      font-family: ui-monospace, monospace;
-      font-size: 0.75rem;
-      color: #94a3b8;
+    .log-wrap {
       overflow-y: auto;
-      max-height: 200px;
-      padding: 0.5rem;
+      max-height: 360px;
       background: #252525;
       border-radius: 6px;
       border: 1px solid #333;
-      white-space: pre-wrap;
-      word-break: break-all;
     }
-    .log-content:empty::before { content: 'Detection log (when analysis is on)'; color: #555; }
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-family: ui-monospace, monospace;
+    }
+    .log-table th {
+      text-align: left;
+      padding: 0.4rem 0.5rem;
+      background: #333;
+      color: #ccc;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+    .log-table td {
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid #333;
+      color: #94a3b8;
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table .zone { color: #22c55e; }
+    .log-table .raw { padding: 0.5rem; color: #666; }
     .status { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; color: #aaa; }
     .controls { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; }
     .controls button {
@@ -89,8 +114,29 @@
   <h1>Live Defect Detection</h1>
   <p class="sub">Raspberry Pi 5 — livestream with 3×3 zone grid. Defects are assigned to a zone by position.</p>
 
-  <div class="feed-wrap">
-    <img src="/video_feed" alt="Live camera feed" />
+  <div class="stream-row">
+    <div class="feed-wrap">
+      <img src="/video_feed" alt="Live camera feed" />
+    </div>
+    <div class="log-section">
+      <h2>Detection log</h2>
+      <div class="log-wrap">
+        <table class="log-table" id="log-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Zone</th>
+              <th>Defect</th>
+              <th>Conf</th>
+              <th>Bbox</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            <tr><td colspan="5" class="raw">No entries yet. Start analysis to log.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="zone-section">
@@ -109,11 +155,6 @@
     </div>
   </div>
 
-  <div class="log-section">
-    <h2>Detection log</h2>
-    <div class="log-content" id="log-content"></div>
-  </div>
-
   <div class="controls">
     <button class="start" type="button" id="btn-start">Start analysis</button>
     <button class="stop" type="button" id="btn-stop">Stop analysis</button>
@@ -126,7 +167,8 @@
     const btnStart = document.getElementById('btn-start');
     const btnStop = document.getElementById('btn-stop');
     const statusEl = document.getElementById('analysis-status');
-    const logContent = document.getElementById('log-content');
+    const logTbody = document.getElementById('log-tbody');
+    const logWrap = document.querySelector('.log-wrap');
     const zoneCells = document.querySelectorAll('#zone-grid .zone-cell');
     let logInterval = null;
     let zoneInterval = null;
@@ -165,14 +207,33 @@
         .catch(() => {});
     }
 
+    // Parse "[zone] name conf @ (x1,y1)-(x2,y2)"
+    const logLineRe = /^\[([^\]]+)\]\s+(\S+)\s+([\d.]+)\s+@\s+\((\d+),(\d+)\)-\((\d+),(\d+)\)$/;
     function pollLogs() {
       fetch('/api/logs')
         .then(r => r.json())
         .then(data => {
-          logContent.textContent = (data.lines && data.lines.length) ? data.lines.join('\n') : '';
-          logContent.scrollTop = logContent.scrollHeight;
+          const lines = data.lines || [];
+          if (lines.length === 0) {
+            logTbody.innerHTML = '<tr><td colspan="5" class="raw">No entries yet. Start analysis to log.</td></tr>';
+            return;
+          }
+          logTbody.innerHTML = lines.map((line, i) => {
+            const m = line.match(logLineRe);
+            if (m) {
+              const [, zone, defect, conf, x1, y1, x2, y2] = m;
+              return `<tr><td>${i + 1}</td><td class="zone">${zone}</td><td>${defect}</td><td>${conf}</td><td>(${x1},${y1})-(${x2},${y2})</td></tr>`;
+            }
+            return `<tr><td colspan="5" class="raw">${escapeHtml(line)}</td></tr>`;
+          }).join('');
+          if (logWrap) logWrap.scrollTop = logWrap.scrollHeight;
         })
         .catch(() => {});
+    }
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
     }
 
     btnStart.addEventListener('click', () => setAnalysis(true));
