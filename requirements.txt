@@ -2,5 +2,5 @@
 flask>=2.3.0
 opencv-python-headless>=4.8.0
 numpy>=1.20.0
-# TFLite: use tflite-runtime on Pi (smaller). If install fails, use: tensorflow>=2.14
-tflite-runtime>=2.14.0
+# Use tensorflow (includes TFLite). tflite-runtime has no wheel on Pi / some platforms.
+tensorflow>=2.13,<2.18
