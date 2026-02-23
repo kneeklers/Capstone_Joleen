@@ -9,11 +9,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# Use TensorFlow's TFLite (you have this). Only use tflite_runtime if TensorFlow isn't available.
-try:
-    import tensorflow.lite as tflite
-except ImportError:
-    import tflite_runtime.interpreter as tflite
+# Use TensorFlow's built-in TFLite interpreter (no tflite_runtime needed).
+import tensorflow.lite as tflite
 
 # Default paths (set MODEL_PATH and LABELS_PATH env or pass to DefectDetector)
 SCRIPT_DIR = Path(__file__).resolve().parent
