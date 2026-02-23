@@ -119,6 +119,15 @@ That runs **rpicam-vid** in the background and streams its output into the app. 
 4. Run again: `python app.py`. Check the console for `[Camera]` messages to see whether OpenCV or Picamera2 was tried and why it failed.
 5. Force backend: `USE_PICAMERA2=1 python app.py` to prefer Pi Cam, or `USE_PICAMERA2=0 python app.py` to use OpenCV only (e.g. USB webcam).
 
+**Troubleshoot OpenCV (make Pi Camera work with OpenCV):** OpenCV needs a V4L2 device (`/dev/video0`). On the Pi run:
+   ```bash
+   bash scripts/check_camera.sh
+   ```
+   This lists `/dev/video*`, V4L2 devices, and whether OpenCV can open/read each index. Then try:
+   - **No `/dev/video*`:** Your OS doesn’t expose the Pi Camera as V4L2. Use `USE_RPICAM=1 python app.py`, or look for a “V4L2 compatibility” or “libcamera V4L2” option for your Pi OS.
+   - **`/dev/video0` exists but OpenCV “failed to read a frame”:** Try `CAMERA_INDEX=1` or `2`. Install v4l2-utils and run `v4l2-ctl -d /dev/video0 --list-formats-ext` to see supported formats; the app uses default (often YUYV/MJPEG).
+   - **USB webcam:** Plug it in; it usually appears as `/dev/video0`. Run the app with `USE_PICAMERA2=0` so only OpenCV is used.
+
 **If you get `ModuleNotFoundError: No module named 'imp'`** (Python 3.12+): the `imp` module was removed. Either upgrade flatbuffers and reinstall, or use Python 3.11:
 
 ```bash
