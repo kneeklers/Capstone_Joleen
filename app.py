@@ -50,15 +50,16 @@ _detector = None
 
 
 def _try_opencv_camera():
-    # Pi Camera (rp1-cfe) appears as /dev/video0 but often needs explicit MJPEG/YUYV to read.
-    for backend in (cv2.CAP_ANY, cv2.CAP_V4L2):
+    # Pi Camera (rp1-cfe) /dev/video0 supports YUYV, BGR3, RGB3 - no MJPEG. Set format then size.
+    for backend in (cv2.CAP_V4L2, cv2.CAP_ANY):
         cap = cv2.VideoCapture(CAMERA_INDEX, backend)
         if not cap.isOpened():
             continue
-        # Set FOURCC before size; try MJPEG then YUYV then default.
         for fourcc_name, fourcc_val in (
+            ("BGR3", cv2.VideoWriter_fourcc(*"BGR3")),   # 24-bit BGR, native OpenCV
+            ("YUYV", cv2.VideoWriter_fourcc(*"YUYV")),  # common V4L2
+            ("RGB3", cv2.VideoWriter_fourcc(*"RGB3")),
             ("MJPG", cv2.VideoWriter_fourcc(*"MJPG")),
-            ("YUYV", cv2.VideoWriter_fourcc(*"YUYV")),
             (None, None),
         ):
             if fourcc_val is not None:
@@ -66,7 +67,11 @@ def _try_opencv_camera():
             if FRAME_SIZE:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
-            ok, _ = cap.read()
+            # Some V4L2 drivers need a couple of reads before they deliver
+            for _ in range(3):
+                ok, _ = cap.read()
+                if ok:
+                    break
             if ok:
                 msg = f"format {fourcc_name}" if fourcc_name else ""
                 print("[Camera] OpenCV: using camera index", CAMERA_INDEX, msg)
