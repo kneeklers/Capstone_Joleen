@@ -74,14 +74,26 @@ A **Flask** app streams the camera and runs **live defect detection** with bound
    - **best_float32.tflite** (or best_float16.tflite)
    - **labels.txt**
 
-2. On the Pi, install and run:
+2. On the Pi, install and run (first time only: create venv and install deps):
 
 ```bash
+cd /path/to/Capstone_Joleen   # your project folder
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+```
+
+3. **Every time after you boot the Pi** (or after deactivating the venv), run:
+
+```bash
+cd /path/to/Capstone_Joleen
+source venv/bin/activate
 python app.py
 ```
 
-3. Open in a browser:
+If you use the Pi Camera Module 3 with rpicam: `USE_RPICAM=1 python app.py`
+
+4. Open in a browser:
    - On the Pi: **http://localhost:5000**
    - From another device: **http://\<pi-ip\>:5000**
 
