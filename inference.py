@@ -135,14 +135,14 @@ class DefectDetector:
 
 
 def draw_detections(frame, detections, color=(0, 255, 0), thickness=2, font_scale=0.6):
-    """Draw bounding boxes and labels on frame (BGR). Modifies frame in place."""
+    """Draw bounding boxes and defect names + confidence on frame (BGR). Modifies frame in place."""
     for x1, y1, x2, y2, name, conf in detections:
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
         label = f"{name} {conf:.2f}"
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
-        cv2.rectangle(frame, (x1, y1 - th - 8), (x1 + tw, y1), color, -1)
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)
+        cv2.rectangle(frame, (x1, y1 - th - 10), (x1 + tw + 4, y1), color, -1)
         cv2.putText(
-            frame, label, (x1, y1 - 4),
-            cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 1, cv2.LINE_AA,
+            frame, label, (x1 + 2, y1 - 5),
+            cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 2, cv2.LINE_AA,
         )
     return frame

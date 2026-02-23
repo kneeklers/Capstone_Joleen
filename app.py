@@ -240,7 +240,7 @@ def _no_camera_frame():
 
 
 def generate_frames():
-    """Yield JPEG frames for MJPEG live stream, with optional defect detection and bounding boxes."""
+    """Yield JPEG frames for MJPEG live stream with defect bounding boxes and labels; print detections to console."""
     backend, cam = get_camera()
     if backend is None or cam is None:
         frame = _no_camera_frame()
@@ -251,6 +251,8 @@ def generate_frames():
         return
     detector = get_detector()
     frame_count = 0
+    last_detections = []
+    last_print_time = 0.0
     while True:
         if backend == "opencv":
             success, frame = cam.read()
@@ -271,8 +273,13 @@ def generate_frames():
             except Exception:
                 break
         if detector is not None and (frame_count % DETECT_EVERY_N_FRAME == 0):
-            detections = detector.detect(frame)
-            draw_detections(frame, detections)
+            last_detections = detector.detect(frame)
+            if last_detections and (time.time() - last_print_time) >= 1.0:
+                for x1, y1, x2, y2, name, conf in last_detections:
+                    print(f"[Defect] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})")
+                last_print_time = time.time()
+        if last_detections:
+            draw_detections(frame, last_detections, color=(0, 255, 0), thickness=2, font_scale=0.65)
         frame_count += 1
         _, jpeg = cv2.imencode(".jpg", frame)
         yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
