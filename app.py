@@ -52,6 +52,11 @@ _detector = None
 _analysis_enabled = False
 _analysis_lock = Lock()
 
+# In-memory log for webpage (last N detection lines).
+_log_lines = []
+_log_lock = Lock()
+_LOG_MAX = 200
+
 
 def _try_opencv_camera():
     # Pi Camera (rp1-cfe) /dev/video0 supports YUYV, BGR3, RGB3 - no MJPEG. Set format then size.
@@ -282,7 +287,12 @@ def generate_frames():
             last_detections = detector.detect(frame)
             if last_detections and (time.time() - last_print_time) >= 1.0:
                 for x1, y1, x2, y2, name, conf in last_detections:
-                    print(f"[Defect] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})")
+                    line = f"[Defect] {name} {conf:.2f} @ ({x1},{y1})-({x2},{y2})"
+                    print(line)
+                    with _log_lock:
+                        _log_lines.append(line)
+                        if len(_log_lines) > _LOG_MAX:
+                            _log_lines.pop(0)
                 last_print_time = time.time()
         elif not do_analysis:
             last_detections = []
@@ -297,6 +307,13 @@ def generate_frames():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/api/logs", methods=["GET"])
+def api_logs():
+    """Return recent detection log lines for the webpage."""
+    with _log_lock:
+        return jsonify({"lines": list(_log_lines)})
 
 
 @app.route("/api/analysis", methods=["GET"])

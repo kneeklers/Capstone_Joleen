@@ -24,20 +24,61 @@
       font-size: 0.9rem;
       margin-bottom: 1rem;
     }
-    .feed-wrap {
-      background: #000;
-      border-radius: 8px;
-      overflow: hidden;
-      max-width: 100%;
-      display: inline-block;
+    .grid-3x3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 8px;
+      max-width: 1200px;
+      margin-bottom: 1rem;
     }
-    .feed-wrap img {
-      display: block;
-      max-width: 100%;
+    .cell {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 0.5rem;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .cell-label {
+      font-size: 0.75rem;
+      color: #666;
+      margin-bottom: 0.25rem;
+    }
+    .cell.feed {
+      background: #000;
+      grid-column: 2;
+      grid-row: 2;
+      padding: 0;
+    }
+    .cell.feed img {
+      width: 100%;
       height: auto;
+      display: block;
+    }
+    .cell.log {
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    .log-content {
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      overflow-y: auto;
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-content:empty::before {
+      content: 'Detection log (when analysis is on)';
+      color: #555;
     }
     .status {
-      margin-top: 1rem;
+      margin-top: 0.5rem;
       padding: 0.5rem 0.75rem;
       background: #2a2a2a;
       border-radius: 6px;
@@ -78,10 +119,23 @@
 </head>
 <body>
   <h1>Live Defect Detection</h1>
-  <p class="sub">Raspberry Pi 5 — camera feed. Start analysis to run detection and log defects.</p>
+  <p class="sub">Raspberry Pi 5 — 3×3 layout. Centre = livestream; middle right = detection log.</p>
 
-  <div class="feed-wrap">
-    <img src="/video_feed" alt="Live camera feed" />
+  <div class="grid-3x3">
+    <div class="cell"><span class="cell-label">Top left</span></div>
+    <div class="cell"><span class="cell-label">Top middle</span></div>
+    <div class="cell"><span class="cell-label">Top right</span></div>
+    <div class="cell"><span class="cell-label">Middle left</span></div>
+    <div class="cell feed">
+      <img src="/video_feed" alt="Live camera feed" />
+    </div>
+    <div class="cell log">
+      <span class="cell-label">Detection log</span>
+      <div class="log-content" id="log-content"></div>
+    </div>
+    <div class="cell"><span class="cell-label">Bottom left</span></div>
+    <div class="cell"><span class="cell-label">Bottom middle</span></div>
+    <div class="cell"><span class="cell-label">Bottom right</span></div>
   </div>
 
   <div class="controls">
@@ -90,12 +144,14 @@
     <span class="analysis-status off" id="analysis-status">Analysis: off — plain livestream</span>
   </div>
 
-  <p class="status">Start = defect detection + bounding boxes + console logging. Stop = normal livestream only.</p>
+  <p class="status">Start = defect detection + bounding boxes + webpage log. Stop = normal livestream only.</p>
 
   <script>
     const btnStart = document.getElementById('btn-start');
     const btnStop = document.getElementById('btn-stop');
     const statusEl = document.getElementById('analysis-status');
+    const logContent = document.getElementById('log-content');
+    let logInterval = null;
 
     function setAnalysis(enabled) {
       fetch('/api/analysis?enabled=' + (enabled ? '1' : '0'))
@@ -103,12 +159,28 @@
         .then(data => {
           statusEl.textContent = data.analysis ? 'Analysis: on — detecting & logging' : 'Analysis: off — plain livestream';
           statusEl.className = 'analysis-status ' + (data.analysis ? 'on' : 'off');
+          if (data.analysis) {
+            if (!logInterval) logInterval = setInterval(pollLogs, 1500);
+          } else {
+            if (logInterval) { clearInterval(logInterval); logInterval = null; }
+          }
         })
         .catch(() => { statusEl.textContent = 'Error'; });
     }
 
+    function pollLogs() {
+      fetch('/api/logs')
+        .then(r => r.json())
+        .then(data => {
+          logContent.textContent = (data.lines && data.lines.length) ? data.lines.join('\n') : '';
+          logContent.scrollTop = logContent.scrollHeight;
+        })
+        .catch(() => {});
+    }
+
     btnStart.addEventListener('click', () => setAnalysis(true));
     btnStop.addEventListener('click', () => setAnalysis(false));
+    pollLogs();
   </script>
 </body>
 </html>
