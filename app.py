@@ -50,21 +50,29 @@ _detector = None
 
 
 def _try_opencv_camera():
-    # Try default backend, then V4L2 (Pi camera sometimes appears as /dev/video0)
+    # Pi Camera (rp1-cfe) appears as /dev/video0 but often needs explicit MJPEG/YUYV to read.
     for backend in (cv2.CAP_ANY, cv2.CAP_V4L2):
         cap = cv2.VideoCapture(CAMERA_INDEX, backend)
         if not cap.isOpened():
             continue
-        if FRAME_SIZE:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
-        ok, _ = cap.read()
-        if not ok:
-            cap.release()
-            continue
-        print("[Camera] OpenCV: using camera index", CAMERA_INDEX)
-        return cap
-    print(f"[Camera] OpenCV: could not open index {CAMERA_INDEX}. Try CAMERA_INDEX=0 or 1, or USE_RPICAM=1 for Pi Camera.")
+        # Set FOURCC before size; try MJPEG then YUYV then default.
+        for fourcc_name, fourcc_val in (
+            ("MJPG", cv2.VideoWriter_fourcc(*"MJPG")),
+            ("YUYV", cv2.VideoWriter_fourcc(*"YUYV")),
+            (None, None),
+        ):
+            if fourcc_val is not None:
+                cap.set(cv2.CAP_PROP_FOURCC, fourcc_val)
+            if FRAME_SIZE:
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
+            ok, _ = cap.read()
+            if ok:
+                msg = f"format {fourcc_name}" if fourcc_name else ""
+                print("[Camera] OpenCV: using camera index", CAMERA_INDEX, msg)
+                return cap
+        cap.release()
+    print(f"[Camera] OpenCV: could not read from index {CAMERA_INDEX}. Use USE_RPICAM=1 for Pi Camera.")
     return None
 
 
