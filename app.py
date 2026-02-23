@@ -38,33 +38,49 @@ _detector = None
 def _try_opencv_camera():
     cap = cv2.VideoCapture(CAMERA_INDEX)
     if not cap.isOpened():
+        print(f"[Camera] OpenCV: could not open index {CAMERA_INDEX}. Try CAMERA_INDEX=0 or 1.")
         return None
     if FRAME_SIZE:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
-    # Probe one frame
     ok, _ = cap.read()
     if not ok:
+        print("[Camera] OpenCV: opened but failed to read a frame.")
         cap.release()
         return None
+    print("[Camera] OpenCV: using camera index", CAMERA_INDEX)
     return cap
 
 
 def _try_picamera2():
     try:
         from picamera2 import Picamera2
-    except ImportError:
+    except ImportError as e:
+        print("[Camera] Picamera2: not installed. Install with: pip install picamera2  (in your venv)")
+        print("         ", e)
         return None
     try:
         picam2 = Picamera2()
-        config = picam2.create_preview_configuration(
-            main={"size": FRAME_SIZE, "format": "RGB888"}
-        )
-        picam2.configure(config)
+        # Pi Camera Module 3 (imx708) supports 1536x864, 2304x1296, 4608x2592. Use 1536x864 then we resize to FRAME_SIZE.
+        for size in [FRAME_SIZE, (1536, 864), (2304, 1296)]:
+            try:
+                config = picam2.create_preview_configuration(
+                    main={"size": size, "format": "RGB888"}
+                )
+                picam2.configure(config)
+                break
+            except Exception:
+                continue
+        else:
+            config = picam2.create_preview_configuration(main={"format": "RGB888"})
+            picam2.configure(config)
         picam2.start()
-        time.sleep(1)  # let camera settle
+        time.sleep(1)
+        print("[Camera] Picamera2: Pi Camera Module (imx708) is in use.")
         return picam2
-    except Exception:
+    except Exception as e:
+        print("[Camera] Picamera2: failed to start. Enable camera: sudo raspi-config -> Interface Options -> Camera -> Enable")
+        print("         Error:", e)
         return None
 
 
@@ -89,6 +105,7 @@ def get_camera():
                     return ("picam2", _picam2)
         if _camera is not None:
             return ("opencv", _camera)
+        print("[Camera] No camera available. See messages above. Try: USE_PICAMERA2=1 python app.py  or  USE_PICAMERA2=0 python app.py")
         return (None, None)
 
 
@@ -145,6 +162,8 @@ def generate_frames():
             try:
                 frame = cam.capture_array()
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                if (frame.shape[1], frame.shape[0]) != FRAME_SIZE:
+                    frame = cv2.resize(frame, FRAME_SIZE)
             except Exception:
                 break
         if detector is not None and (frame_count % DETECT_EVERY_N_FRAME == 0):

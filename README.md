@@ -87,7 +87,15 @@ python app.py
 
 You’ll see the live feed with defect boxes and labels. If the model/labels are missing, the app still streams video without detections.
 
-**Camera (Pi Camera Module 3):** On Raspberry Pi (aarch64) the app uses **picamera2** by default for the official Camera Module 3 (CSI). Install it once: `sudo apt install -y python3-picamera2`. Then run `python app.py` — the livestream will use the Pi Cam. To use a USB webcam instead, run `USE_PICAMERA2=0 python app.py`.
+**Camera (Pi Camera Module 3):** On Raspberry Pi the app tries **picamera2** first for the official Camera Module 3. If you see "No camera found", do this:
+
+1. **Enable the camera:** `sudo raspi-config` → **Interface Options** → **Camera** → **Enable** → reboot.
+2. **Test the camera:** `libcamera-hello` (or `libcamera-hello -t 2000`). If this fails, the camera or cable isn’t detected.
+3. **Install picamera2 for your venv:**  
+   `pip install picamera2`  
+   (If you use system Python instead of a venv, you can use `sudo apt install -y python3-picamera2`.)
+4. Run again: `python app.py`. Check the console for `[Camera]` messages to see whether OpenCV or Picamera2 was tried and why it failed.
+5. Force backend: `USE_PICAMERA2=1 python app.py` to prefer Pi Cam, or `USE_PICAMERA2=0 python app.py` to use OpenCV only (e.g. USB webcam).
 
 **If you get `ModuleNotFoundError: No module named 'imp'`** (Python 3.12+): the `imp` module was removed. Either upgrade flatbuffers and reinstall, or use Python 3.11:
 
