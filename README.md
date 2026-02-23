@@ -87,6 +87,15 @@ python app.py
 
 You’ll see the live feed with defect boxes and labels. If the model/labels are missing, the app still streams video without detections.
 
+**If you get `ModuleNotFoundError: No module named 'imp'`** (Python 3.12+): the `imp` module was removed. Either upgrade flatbuffers and reinstall, or use Python 3.11:
+
+```bash
+pip install -U "flatbuffers>=24.0.0"
+python app.py
+```
+
+If it still fails, recreate the venv with Python 3.11: `python3.11 -m venv venv`, then `source venv/bin/activate` and `pip install -r requirements.txt`.
+
 ---
 
 ## Colab: "No .tflite in /content/output"

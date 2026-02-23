@@ -2,5 +2,7 @@
 flask>=2.3.0
 opencv-python-headless>=4.8.0
 numpy>=1.20.0
-# Use tensorflow (includes TFLite). tflite-runtime has no wheel on Pi / some platforms.
+# TFLite via TensorFlow. Python 3.11 recommended (3.12+ can hit "No module named 'imp'" in deps).
 tensorflow>=2.13
+# Newer flatbuffers fixes "imp" removed in Python 3.12+ (required by TensorFlow)
+flatbuffers>=24.0.0
