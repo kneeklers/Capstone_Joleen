@@ -64,19 +64,20 @@ class DefectDetector:
         self.interpreter.set_tensor(self.input_details[0]["index"], inp)
         self.interpreter.invoke()
 
-        # Output shape (1, 4+nc, 8400) -> (8400, 4+nc)
+        # Output shape is (1, 4+nc, 8400) or (1, 8400, 4+nc). We need (8400, 4+nc).
         out = self.interpreter.get_tensor(self.output_details[0]["index"])
         if out.ndim == 3:
             out = out[0]
-        if out.shape[0] != 8400 and out.shape[1] != 8400:
-            # Might be (1, 8400, 10)
-            if out.shape[-1] == 8400:
-                out = np.transpose(out, (0, 2, 1))[0]
-            else:
-                out = np.transpose(out, (1, 0))
+        # (10, 8400) -> (8400, 10); (8400, 10) already correct
+        if out.shape[1] == 8400 and out.shape[0] != 8400:
+            out = out.T
+        elif out.shape[0] != 8400 and out.shape[-1] == 8400:
+            out = np.transpose(out, (1, 0))
         nc = out.shape[1] - 4
+        # Only use first 6 classes (our labels); model may export more
+        nc = min(nc, len(self.labels))
         boxes_xywh = out[:, :4]
-        scores = out[:, 4:]
+        scores = out[:, 4 : 4 + nc]
 
         # Class score: max over classes; class_id = argmax
         class_ids = np.argmax(scores, axis=1)
