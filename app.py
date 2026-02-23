@@ -8,6 +8,7 @@ Place best_float32.tflite and labels.txt in this directory (or set MODEL_PATH / 
 """
 
 import os
+import platform
 import time
 from pathlib import Path
 from threading import Lock
@@ -19,10 +20,12 @@ from inference import DefectDetector, draw_detections
 
 app = Flask(__name__)
 
-# Camera: 0 = default (USB or Pi camera via v4l2). Set USE_PICAMERA2=1 to force Pi Camera Module (picamera2).
+# Camera: on Pi (aarch64) we prefer picamera2 for Pi Camera Module 3 / CSI. Set USE_PICAMERA2=0 to use OpenCV instead.
 CAMERA_INDEX = int(os.environ.get("CAMERA_INDEX", "0"))
 FRAME_SIZE = (640, 480)
-USE_PICAMERA2 = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("1", "true", "yes")
+_force_picam2 = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("1", "true", "yes")
+_force_opencv = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("0", "false", "no")
+USE_PICAMERA2 = _force_picam2 or (platform.machine() == "aarch64" and not _force_opencv)
 # Run detection every N frames to balance FPS (1 = every frame, 2 = every other, etc.)
 DETECT_EVERY_N_FRAME = 1
 
@@ -66,7 +69,7 @@ def _try_picamera2():
 
 
 def get_camera():
-    """Return OpenCV VideoCapture or Picamera2. Prefer OpenCV unless USE_PICAMERA2=1 or OpenCV fails."""
+    """Return OpenCV VideoCapture or Picamera2. On Pi (aarch64) prefer Picamera2 for Camera Module 3."""
     global _camera, _picam2
     with _camera_lock:
         if _camera is not None:

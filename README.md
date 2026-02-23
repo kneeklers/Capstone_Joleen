@@ -87,7 +87,7 @@ python app.py
 
 You’ll see the live feed with defect boxes and labels. If the model/labels are missing, the app still streams video without detections.
 
-**Camera:** The app uses OpenCV (`VideoCapture(0)`) by default (USB webcam or Pi camera via v4l2). For the **official Pi Camera Module** (CSI), install picamera2 (`sudo apt install -y python3-picamera2` on Pi OS) and run with `USE_PICAMERA2=1 python app.py`. If no camera is found, the stream shows a “No camera found” message.
+**Camera (Pi Camera Module 3):** On Raspberry Pi (aarch64) the app uses **picamera2** by default for the official Camera Module 3 (CSI). Install it once: `sudo apt install -y python3-picamera2`. Then run `python app.py` — the livestream will use the Pi Cam. To use a USB webcam instead, run `USE_PICAMERA2=0 python app.py`.
 
 **If you get `ModuleNotFoundError: No module named 'imp'`** (Python 3.12+): the `imp` module was removed. Either upgrade flatbuffers and reinstall, or use Python 3.11:
 
