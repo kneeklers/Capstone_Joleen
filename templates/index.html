@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Defect Detection</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .sub {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .feed-wrap {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 100%;
+      display: inline-block;
+    }
+    .feed-wrap img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    .status {
+      margin-top: 1rem;
+      padding: 0.5rem 0.75rem;
+      background: #2a2a2a;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Defect Detection</h1>
+  <p class="sub">Raspberry Pi 5 — camera feed (model can be enabled later)</p>
+
+  <div class="feed-wrap">
+    <img src="/video_feed" alt="Live camera feed" />
+  </div>
+
+  <p class="status">Status: Live feed. Add your TFLite model and wire it in <code>app.py</code> to see detections.</p>
+</body>
+</html>

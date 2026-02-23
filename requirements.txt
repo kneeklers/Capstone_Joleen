@@ -1,0 +1,3 @@
+# Pi 5 web app (live camera only for now; add tflite-runtime when you add the model)
+flask>=2.3.0
+opencv-python-headless>=4.8.0
