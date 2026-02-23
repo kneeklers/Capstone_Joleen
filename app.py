@@ -22,13 +22,11 @@ from inference import DefectDetector, draw_detections
 
 app = Flask(__name__)
 
-# Camera: USE_RPICAM=1 uses rpicam-vid (same stack as rpicam-hello, no Python bindings). Else try picamera2, then OpenCV.
+# Camera: OpenCV first (simplest). Set USE_RPICAM=1 or USE_PICAMERA2=1 to try other backends.
 CAMERA_INDEX = int(os.environ.get("CAMERA_INDEX", "0"))
 FRAME_SIZE = (640, 480)
 USE_RPICAM = os.environ.get("USE_RPICAM", "").strip().lower() in ("1", "true", "yes")
-_force_picam2 = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("1", "true", "yes")
-_force_opencv = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("0", "false", "no")
-USE_PICAMERA2 = _force_picam2 or (platform.machine() == "aarch64" and not _force_opencv and not USE_RPICAM)
+USE_PICAMERA2 = os.environ.get("USE_PICAMERA2", "").strip().lower() in ("1", "true", "yes")
 DETECT_EVERY_N_FRAME = 1
 
 _camera_lock = Lock()
@@ -39,20 +37,22 @@ _detector = None
 
 
 def _try_opencv_camera():
-    cap = cv2.VideoCapture(CAMERA_INDEX)
-    if not cap.isOpened():
-        print(f"[Camera] OpenCV: could not open index {CAMERA_INDEX}. Try CAMERA_INDEX=0 or 1.")
-        return None
-    if FRAME_SIZE:
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
-    ok, _ = cap.read()
-    if not ok:
-        print("[Camera] OpenCV: opened but failed to read a frame.")
-        cap.release()
-        return None
-    print("[Camera] OpenCV: using camera index", CAMERA_INDEX)
-    return cap
+    # Try default backend, then V4L2 (Pi camera sometimes appears as /dev/video0)
+    for backend in (cv2.CAP_ANY, cv2.CAP_V4L2):
+        cap = cv2.VideoCapture(CAMERA_INDEX, backend)
+        if not cap.isOpened():
+            continue
+        if FRAME_SIZE:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE[0])
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE[1])
+        ok, _ = cap.read()
+        if not ok:
+            cap.release()
+            continue
+        print("[Camera] OpenCV: using camera index", CAMERA_INDEX)
+        return cap
+    print(f"[Camera] OpenCV: could not open index {CAMERA_INDEX}. Try CAMERA_INDEX=0 or 1, or USE_RPICAM=1 for Pi Camera.")
+    return None
 
 
 def _try_picamera2():
@@ -148,7 +148,7 @@ def _read_rpicam_frame(proc):
 
 
 def get_camera():
-    """Return (backend, handle). Backend: opencv, picam2, or rpicam (rpicam-vid subprocess)."""
+    """Return (backend, handle). OpenCV is tried first; use USE_RPICAM=1 or USE_PICAMERA2=1 for other backends."""
     global _camera, _picam2, _rpicam_proc
     with _camera_lock:
         if _camera is not None:
@@ -157,7 +157,10 @@ def get_camera():
             return ("picam2", _picam2)
         if _rpicam_proc is not None:
             return ("rpicam", _rpicam_proc)
-        # Prefer rpicam-vid when requested (same stack as rpicam-hello, no Python bindings)
+        # Always try OpenCV first (simplest)
+        _camera = _try_opencv_camera()
+        if _camera is not None:
+            return ("opencv", _camera)
         if USE_RPICAM:
             _rpicam_proc = _try_rpicam_vid()
             if _rpicam_proc is not None:
@@ -166,20 +169,15 @@ def get_camera():
             _picam2 = _try_picamera2()
             if _picam2 is not None:
                 return ("picam2", _picam2)
-            _camera = _try_opencv_camera()
-        else:
-            _camera = _try_opencv_camera()
-            if _camera is None:
-                _picam2 = _try_picamera2()
-                if _picam2 is None and platform.machine() == "aarch64":
-                    _rpicam_proc = _try_rpicam_vid()
-                    if _rpicam_proc is not None:
-                        return ("rpicam", _rpicam_proc)
-        if _camera is not None:
-            return ("opencv", _camera)
-        if _picam2 is not None:
-            return ("picam2", _picam2)
-        print("[Camera] No camera available. On Pi with Camera Module 3, try: USE_RPICAM=1 python app.py")
+        # Fallback: try rpicam on Pi if OpenCV failed
+        if platform.machine() == "aarch64":
+            _rpicam_proc = _try_rpicam_vid()
+            if _rpicam_proc is not None:
+                return ("rpicam", _rpicam_proc)
+            _picam2 = _try_picamera2()
+            if _picam2 is not None:
+                return ("picam2", _picam2)
+        print("[Camera] No camera available. Try CAMERA_INDEX=0 or 1, or USE_RPICAM=1 for Pi Camera Module.")
         return (None, None)
 
 
