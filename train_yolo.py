@@ -70,17 +70,20 @@ def main():
         int8=False,
         optimize=True,
     )
-    # Ultralytics writes .tflite next to best.pt (e.g. best_float32.tflite)
+    # Ultralytics may write .tflite next to best.pt or inside best_saved_model/
+    import shutil
     export_dir = best_pt.parent
     tflite_files = list(Path(export_dir).glob("*.tflite"))
+    saved_model_dir = export_dir / "best_saved_model"
+    if saved_model_dir.is_dir():
+        tflite_files.extend(saved_model_dir.glob("*.tflite"))
     if tflite_files:
-        import shutil
         for src in tflite_files:
             dst = Path(args.output_dir) / src.name
             shutil.copy2(src, dst)
             print("TFLite copied to", dst)
     else:
-        print("TFLite export path:", export_dir)
+        print("TFLite export path:", export_dir, "(check best_saved_model/ for .tflite)")
 
     # Labels for inference on Pi (same order as data.yaml)
     labels_path = Path(args.output_dir) / "labels.txt"

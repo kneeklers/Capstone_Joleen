@@ -68,17 +68,50 @@ If you only need “defect vs good” per image (no bounding boxes), use the Mob
 
 ## Run the web app on the Pi 5 (live camera)
 
-A **Flask** app serves a live camera stream in the browser. No model is used yet; you can add TFLite inference later.
+A **Flask** app streams the camera and runs **live defect detection** with bounding boxes on the stream.
 
-1. On the Pi, install and run:
+1. Copy your Colab outputs to the project folder (same directory as `app.py`):
+   - **best_float32.tflite** (or best_float16.tflite)
+   - **labels.txt**
+
+2. On the Pi, install and run:
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-2. Open in a browser:
+3. Open in a browser:
    - On the Pi: **http://localhost:5000**
-   - From another device on the same network: **http://\<pi-ip\>:5000**
+   - From another device: **http://\<pi-ip\>:5000**
 
-You’ll see the live feed. To add defect detection later, plug your TFLite model and labels into `app.py` (see the `TODO` in `generate_frames()`).
+You’ll see the live feed with defect boxes and labels. If the model/labels are missing, the app still streams video without detections.
+
+---
+
+## Colab: "No .tflite in /content/output"
+
+Ultralytics sometimes saves the TFLite file under `yolov8n_defect/weights/best_saved_model/` instead of `/content/output`. Two options:
+
+1. **Re-run the download cell** — The notebook’s last cell now looks in that folder. If your notebook is old, copy the latest `train_on_colab.ipynb` from this repo and run the last cell again.
+
+2. **Or run this in a new Colab cell** (after training) to find and download the zip:
+
+```python
+from pathlib import Path
+from google.colab import files
+
+output_dir = Path('/content/output')
+weights_dir = output_dir / 'yolov8n_defect' / 'weights'
+tflite = list(output_dir.glob('*.tflite')) or list(weights_dir.glob('*.tflite')) + list((weights_dir / 'best_saved_model').glob('*.tflite'))
+tflite = [str(p) for p in tflite]
+labels_path = output_dir / 'labels.txt'
+
+if tflite and labels_path.exists():
+    import subprocess
+    subprocess.run(['zip', '-j', 'defect_model_for_pi.zip'] + tflite + [str(labels_path)], check=True)
+    files.download('defect_model_for_pi.zip')
+else:
+    print('TFLite:', tflite)
+    print('Labels:', labels_path.exists())
+```

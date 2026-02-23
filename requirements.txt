@@ -1,3 +1,6 @@
-# Pi 5 web app (live camera only for now; add tflite-runtime when you add the model)
+# Pi 5 web app: live stream + TFLite defect detection
 flask>=2.3.0
 opencv-python-headless>=4.8.0
+numpy>=1.20.0
+# TFLite: use tflite-runtime on Pi (smaller). If install fails, use: tensorflow>=2.14
+tflite-runtime>=2.14.0
