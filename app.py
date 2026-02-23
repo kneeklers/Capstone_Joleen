@@ -188,15 +188,20 @@ def _read_rpicam_frame(proc):
         if not chunk:
             return None
         buf += chunk
-        if SOI in buf and EOI in buf:
+        # Find a complete JPEG: SOI then EOI *after* it (EOI before SOI is from a previous frame)
+        while SOI in buf:
             start = buf.index(SOI)
-            end = buf.index(EOI, start) + 2
+            rest = buf[start:]
+            if EOI not in rest:
+                break  # need more data
+            end = start + rest.index(EOI) + 2
             jpeg = buf[start:end]
             buf = buf[end:]
             arr = np.frombuffer(jpeg, dtype=np.uint8)
             frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if frame is not None:
                 return frame
+            # Decode failed, try next SOI in buf
     return None
 
 
