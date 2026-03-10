@@ -31,7 +31,22 @@
       min-width: 0;
     }
     .feed-wrap img { display: block; max-width: 100%; height: auto; }
-    .zone-section { margin-bottom: 1rem; }
+    .video-and-zones {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1 1 480px;
+      min-width: 0;
+      margin-bottom: 1rem;
+    }
+    .video-and-zones .feed-wrap { width: 100%; }
+    .zone-section {
+      margin-bottom: 1rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .zone-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
     .zone-grid {
       display: grid;
@@ -115,8 +130,25 @@
   <p class="sub">Raspberry Pi 5 — livestream with 3×3 zone grid. Defects are assigned to a zone by position.</p>
 
   <div class="stream-row">
-    <div class="feed-wrap">
-      <img src="/video_feed" alt="Live camera feed" />
+    <div class="video-and-zones">
+      <div class="feed-wrap">
+        <img src="/video_feed" alt="Live camera feed" />
+      </div>
+      <div class="zone-section">
+        <h2>Defect location (3×3 grid)</h2>
+        <p style="font-size:0.85rem;color:#888;margin:0 0 0.5rem 0;">Count per zone — matches the grid drawn on the stream when analysis is on.</p>
+        <div class="zone-grid" id="zone-grid">
+          <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
+        </div>
+      </div>
     </div>
     <div class="log-section">
       <h2>Detection log</h2>
@@ -136,22 +168,6 @@
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
-
-  <div class="zone-section">
-    <h2>Defect location (3×3 grid)</h2>
-    <p style="font-size:0.85rem;color:#888;margin:0 0 0.5rem 0;">Count per zone — matches the grid drawn on the stream when analysis is on.</p>
-    <div class="zone-grid" id="zone-grid">
-      <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
     </div>
   </div>
 
