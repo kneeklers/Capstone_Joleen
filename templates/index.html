@@ -51,9 +51,16 @@
     .feed-row {
       display: flex;
       flex-direction: row;
-      align-items: center;
+      align-items: flex-start;
       gap: 1rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0;
+    }
+    .video-and-grid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 0 0 auto;
+      min-width: 0;
     }
     .video-and-zones .feed-wrap {
       width: fit-content;
@@ -173,21 +180,22 @@
       gap: 0.75rem;
       padding: 0.75rem 1rem;
       margin-bottom: 0.75rem;
-      background: linear-gradient(135deg, #caecdf 0%, #164d32 100%);
-      border: 1px solid #ffffff;
+      width: 100%;
+      background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 50%, #e8a0a8 100%);
+      border: 1px solid #e8b4b8;
       border-radius: 8px;
-      color: #e8f5e9;
+      color: #6d3d3d;
       font-weight: 500;
-      box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2);
+      box-shadow: 0 2px 12px rgba(200, 120, 130, 0.25);
     }
     .confirmed-alert.visible { display: flex; }
     .confirmed-alert.has-new { animation: pulse-alert 1.5s ease-out; }
     .confirmed-alert-icon { font-size: 1.5rem; flex-shrink: 0; }
     .confirmed-alert-message { flex: 1; }
-    .confirmed-alert-names { font-weight: 600; color: #f7fffa; }
+    .confirmed-alert-names { font-weight: 600; color: #8b4545; }
     @keyframes pulse-alert {
-      0%, 100% { box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2); }
-      50% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); }
+      0%, 100% { box-shadow: 0 2px 12px rgba(200, 120, 130, 0.25); }
+      50% { box-shadow: 0 0 0 4px rgba(220, 140, 150, 0.45); }
     }
     .status { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; color: #aaa; }
     .controls { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
@@ -264,39 +272,41 @@
     <div class="video-and-zones">
       <div class="feed-row">
         <div class="controls">
+          <div id="confirmed-alert" class="confirmed-alert" role="alert" aria-live="polite">
+            <span class="confirmed-alert-icon" aria-hidden="true">⚠</span>
+            <span class="confirmed-alert-message">
+              <span class="confirmed-alert-names" id="confirmed-alert-names"></span> — defect(s) confirmed.
+            </span>
+          </div>
           <div class="controls-buttons">
             <button class="start" type="button" id="btn-start">Start analysis</button>
             <button class="stop" type="button" id="btn-stop">Stop analysis</button>
           </div>
           <span class="analysis-status off" id="analysis-status">Analysis: off — plain livestream Video</span>
         </div>
-        <div class="feed-wrap">
-          <img id="video-img" src="/video_feed" alt="Live camera feed" />
-        </div>
-      </div>
-      <div class="zone-section">
-        <h2 style="color: #8a7882">DEFECT LOCATION</h2>
-        <p style="font-size:0.85rem;color:#888;margin:0 0 0.35rem 0;">Count per zone: matches the grid drawn on the stream when analysis is on.</p>
-        <div class="zone-grid" id="zone-grid">
-          <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
-          <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
+        <div class="video-and-grid">
+          <div class="feed-wrap">
+            <img id="video-img" src="/video_feed" alt="Live camera feed" />
+          </div>
+          <div class="zone-section">
+            <h2 style="color: #8a7882">DEFECT LOCATION</h2>
+            <p style="font-size:0.85rem;color:#888;margin:0 0 0.35rem 0;">Count per zone: matches the grid drawn on the stream when analysis is on.</p>
+            <div class="zone-grid" id="zone-grid">
+              <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
+              <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
     <div class="log-section">
-      <div id="confirmed-alert" class="confirmed-alert" role="alert" aria-live="polite">
-        <span class="confirmed-alert-icon" aria-hidden="true">⚠</span>
-        <span class="confirmed-alert-message">
-          <span class="confirmed-alert-names" id="confirmed-alert-names"></span> — defect(s) confirmed.
-        </span>
-      </div>
       <div class="logs-row">
         <div class="log-block">
           <h2 style="color:#8a7882">DETECTION LOGS</h2>
