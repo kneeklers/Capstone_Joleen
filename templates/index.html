@@ -72,6 +72,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-align: center;
       flex-shrink: 0;
     }
@@ -83,8 +84,7 @@
       grid-template-rows: auto auto auto;
       gap: 4px;
       max-width: 280px;
-      margin-left: auto;
-      margin-right: auto;
+      margin: 0 auto;
     }
     .zone-cell {
       background: #5e4d58;
@@ -173,8 +173,8 @@
       gap: 0.75rem;
       padding: 0.75rem 1rem;
       margin-bottom: 0.75rem;
-      background: linear-gradient(135deg, #1e3a2f 0%, #164d32 100%);
-      border: 1px solid #22c55e;
+      background: linear-gradient(135deg, #caecdf 0%, #164d32 100%);
+      border: 1px solid #ffffff;
       border-radius: 8px;
       color: #e8f5e9;
       font-weight: 500;
@@ -184,7 +184,7 @@
     .confirmed-alert.has-new { animation: pulse-alert 1.5s ease-out; }
     .confirmed-alert-icon { font-size: 1.5rem; flex-shrink: 0; }
     .confirmed-alert-message { flex: 1; }
-    .confirmed-alert-names { font-weight: 600; color: #22c55e; }
+    .confirmed-alert-names { font-weight: 600; color: #f7fffa; }
     @keyframes pulse-alert {
       0%, 100% { box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2); }
       50% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); }
