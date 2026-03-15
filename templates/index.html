@@ -129,6 +129,41 @@
     .log-table tr:last-child td { border-bottom: none; }
     .log-table .zone { color: #22c55e; }
     .log-table .raw { padding: 0.5rem; color: #666; }
+    .logs-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .logs-row .log-block {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+    .logs-row .log-block h2 { margin-bottom: 0.5rem; }
+    .confirmed-table .defect-name { font-weight: 600; color: #22c55e; font-size: 0.9rem; }
+    .confirmed-table .raw { padding: 0.5rem; color: #666; }
+    .confirmed-alert {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #1e3a2f 0%, #164d32 100%);
+      border: 1px solid #22c55e;
+      border-radius: 8px;
+      color: #e8f5e9;
+      font-weight: 500;
+      box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2);
+    }
+    .confirmed-alert.visible { display: flex; }
+    .confirmed-alert.has-new { animation: pulse-alert 1.5s ease-out; }
+    .confirmed-alert-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .confirmed-alert-message { flex: 1; }
+    .confirmed-alert-names { font-weight: 600; color: #22c55e; }
+    @keyframes pulse-alert {
+      0%, 100% { box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2); }
+      50% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.4); }
+    }
     .status { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; color: #aaa; }
     .controls { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     .video-and-zones .controls { justify-content: center; }
@@ -216,19 +251,44 @@
       </div>
     </div>
     <div class="log-section">
-      <h2 style="color:#8a7882; padding-left: 80px">DETECTION LOGS</h2>
-      <div class="log-wrap">
-        <table class="log-table" id="log-table">
-          <thead>
-            <tr>
-              <th>Zone</th>
-              <th>Defect</th>
-            </tr>
-          </thead>
-          <tbody id="log-tbody">
-            <tr><td colspan="2" class="raw">No entries yet. Start analysis to log.</td></tr>
-          </tbody>
-        </table>
+      <div id="confirmed-alert" class="confirmed-alert" role="alert" aria-live="polite">
+        <span class="confirmed-alert-icon" aria-hidden="true">⚠</span>
+        <span class="confirmed-alert-message">
+          <span class="confirmed-alert-names" id="confirmed-alert-names"></span> — defect(s) confirmed (3 consecutive detections).
+        </span>
+      </div>
+      <div class="logs-row">
+        <div class="log-block">
+          <h2 style="color:#8a7882">DETECTION LOGS</h2>
+          <div class="log-wrap">
+            <table class="log-table" id="log-table">
+              <thead>
+                <tr>
+                  <th>Zone</th>
+                  <th>Defect</th>
+                </tr>
+              </thead>
+              <tbody id="log-tbody">
+                <tr><td colspan="2" class="raw">No entries yet. Start analysis to log.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="log-block">
+          <h2 style="color:#8a7882">CONFIRMED DEFECTS</h2>
+          <div class="log-wrap">
+            <table class="log-table confirmed-table" id="confirmed-table">
+              <thead>
+                <tr>
+                  <th>Defect (3 consecutive)</th>
+                </tr>
+              </thead>
+              <tbody id="confirmed-tbody">
+                <tr><td class="raw">None yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -254,7 +314,11 @@
     const btnStop = document.getElementById('btn-stop');
     const statusEl = document.getElementById('analysis-status');
     const logTbody = document.getElementById('log-tbody');
+    const confirmedTbody = document.getElementById('confirmed-tbody');
+    const confirmedAlertEl = document.getElementById('confirmed-alert');
+    const confirmedAlertNamesEl = document.getElementById('confirmed-alert-names');
     const logWrap = document.querySelector('.log-wrap');
+    let lastConfirmedSet = new Set();
     const zoneCells = document.querySelectorAll('#zone-grid .zone-cell');
     let logInterval = null;
     let zoneInterval = null;
@@ -304,6 +368,25 @@
 
     // Parse "[zone] name conf @ (x1,y1)-(x2,y2)"
     const logLineRe = /^\[([^\]]+)\]\s+(\S+)\s+([\d.]+)\s+@\s+\((\d+),(\d+)\)-\((\d+),(\d+)\)$/;
+    function getDefectsWithThreeConsecutive(lines) {
+      const defectNames = lines.map((line) => {
+        const m = line.match(logLineRe);
+        return m ? m[2] : null;
+      });
+      const confirmed = new Set();
+      let runDefect = null;
+      let runCount = 0;
+      for (const name of defectNames) {
+        if (name === runDefect) {
+          runCount++;
+          if (runCount >= 3) confirmed.add(runDefect);
+        } else {
+          runDefect = name;
+          runCount = name ? 1 : 0;
+        }
+      }
+      return [...confirmed];
+    }
     function pollLogs() {
       if (isStandalone) return;
       fetch('/api/logs')
@@ -312,6 +395,7 @@
           const lines = data.lines || [];
           if (lines.length === 0) {
             logTbody.innerHTML = '<tr><td colspan="2" class="raw">No entries yet. Start analysis to log.</td></tr>';
+            confirmedTbody.innerHTML = '<tr><td class="raw">None yet.</td></tr>';
             return;
           }
           logTbody.innerHTML = lines.map((line) => {
@@ -322,6 +406,31 @@
             }
             return `<tr><td colspan="2" class="raw">${escapeHtml(line)}</td></tr>`;
           }).join('');
+          const confirmedDefects = getDefectsWithThreeConsecutive(lines);
+          const currentSet = new Set(confirmedDefects);
+          const hasNew = confirmedDefects.some((d) => !lastConfirmedSet.has(d));
+          if (confirmedDefects.length === 0) {
+            confirmedTbody.innerHTML = '<tr><td class="raw">None yet.</td></tr>';
+            confirmedAlertEl.classList.remove('visible', 'has-new');
+            lastConfirmedSet = new Set();
+          } else {
+            confirmedTbody.innerHTML = confirmedDefects.map((d) =>
+              `<tr><td class="defect-name">${escapeHtml(d)}</td></tr>`
+            ).join('');
+            confirmedAlertNamesEl.textContent = confirmedDefects.join(', ');
+            confirmedAlertEl.classList.add('visible');
+            if (hasNew) {
+              confirmedAlertEl.classList.add('has-new');
+              setTimeout(() => confirmedAlertEl.classList.remove('has-new'), 2000);
+              if (!isStandalone && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('Defect confirmed', {
+                  body: 'Detected: ' + confirmedDefects.join(', '),
+                  icon: '/favicon.ico'
+                }).catch(() => {});
+              }
+            }
+            lastConfirmedSet = currentSet;
+          }
           if (logWrap) logWrap.scrollTop = logWrap.scrollHeight;
         })
         .catch(() => {});
