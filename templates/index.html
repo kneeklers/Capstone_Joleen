@@ -10,10 +10,13 @@
     body {
       font-family: 'Open Sans', sans-serif;
       margin: 0;
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       background: #ecdce0;
       color: #8a7882;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; }
     .sub { color: #8a7882; font-size: 0.9rem; margin-bottom: 1rem; }
@@ -24,6 +27,9 @@
       justify-content: center;
       margin-bottom: 0;
       flex-wrap: wrap;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
     .feed-wrap {
       background: #000;
@@ -39,7 +45,8 @@
       align-items: center;
       flex: 0 0 auto;
       min-width: 0;
-      margin-bottom: 1rem;
+      min-height: 0;
+      margin-bottom: 0;
     }
     .feed-row {
       display: flex;
@@ -59,21 +66,23 @@
       flex-shrink: 0;
     }
     .zone-section {
-      margin-top: 0;
-      margin-bottom: 1rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0;
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
+      flex-shrink: 0;
     }
-    .zone-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
+    .zone-section h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.25rem 0; color: #ccc; }
+    .zone-section p { margin: 0 0 0.35rem 0; }
     .zone-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       grid-template-rows: auto auto auto;
-      gap: 6px;
-      max-width: 360px;
+      gap: 4px;
+      max-width: 280px;
       margin-left: auto;
       margin-right: auto;
     }
@@ -81,8 +90,8 @@
       background: #5e4d58;
       border: 1px solid #dfa9cd;
       border-radius: 6px;
-      padding: 0.5rem;
-      min-height: 64px;
+      padding: 0.35rem;
+      min-height: 48px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -97,11 +106,16 @@
     .log-section {
       flex: 0 1 320px;
       min-width: 280px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .log-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
     .log-wrap {
       overflow-y: auto;
-      max-height: 360px;
+      flex: 1;
+      min-height: 0;
       background: #252525;
       border-radius: 6px;
       border: 1px solid #333;
@@ -134,10 +148,21 @@
       gap: 1rem;
       flex-wrap: wrap;
       min-width: 0;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
     .logs-row .log-block {
       flex: 1 1 200px;
       min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .logs-row .log-block .log-wrap {
+      flex: 1;
+      min-height: 0;
     }
     .logs-row .log-block h2 { margin-bottom: 0.5rem; }
     .confirmed-table .defect-name { font-weight: 600; color: #22c55e; font-size: 0.9rem; }
@@ -230,7 +255,7 @@
   </style>
 </head>
 <body>
-  <div class="page-header">
+  <div class="page-header" style="flex-shrink: 0;">
     <h1>VISUAL DEFECTS DETECTION</h1>
     <p class="sub">Livestream with a 3x3 grid is powered by a Raspberry Pi 5 and Module 3 Camera to identify location of defects present.</p>
   </div>
@@ -247,6 +272,21 @@
         </div>
         <div class="feed-wrap">
           <img id="video-img" src="/video_feed" alt="Live camera feed" />
+        </div>
+      </div>
+      <div class="zone-section">
+        <h2 style="color: #8a7882">DEFECT LOCATION</h2>
+        <p style="font-size:0.85rem;color:#888;margin:0 0 0.35rem 0;">Count per zone: matches the grid drawn on the stream when analysis is on.</p>
+        <div class="zone-grid" id="zone-grid">
+          <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
+          <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
         </div>
       </div>
     </div>
@@ -292,22 +332,6 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <div class="zone-section">
-    <h2 style="color: #8a7882">DEFECT LOCATION</h2>
-    <p style="font-size:0.85rem;color:#888;margin:0 0 0.5rem 0;">Count per zone: matches the grid drawn on the stream when analysis is on.</p>
-    <div class="zone-grid" id="zone-grid">
-      <div class="zone-cell" data-zone="top_left"><span class="name">Top left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="top_middle"><span class="name">Top middle</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="top_right"><span class="name">Top right</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="middle_left"><span class="name">Middle left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="centre"><span class="name">Centre</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="middle_right"><span class="name">Middle right</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_left"><span class="name">Bottom left</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_middle"><span class="name">Bottom middle</span><span class="count">0</span></div>
-      <div class="zone-cell" data-zone="bottom_right"><span class="name">Bottom right</span><span class="count">0</span></div>
     </div>
   </div>
 
