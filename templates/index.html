@@ -280,11 +280,13 @@
             <table class="log-table confirmed-table" id="confirmed-table">
               <thead>
                 <tr>
+                  <th>#</th>
+                  <th>Zone</th>
                   <th>Defect (3 consecutive)</th>
                 </tr>
               </thead>
               <tbody id="confirmed-tbody">
-                <tr><td class="raw">None yet.</td></tr>
+                <tr><td colspan="3" class="raw">None yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -369,23 +371,28 @@
     // Parse "[zone] name conf @ (x1,y1)-(x2,y2)"
     const logLineRe = /^\[([^\]]+)\]\s+(\S+)\s+([\d.]+)\s+@\s+\((\d+),(\d+)\)-\((\d+),(\d+)\)$/;
     function getDefectsWithThreeConsecutive(lines) {
-      const defectNames = lines.map((line) => {
+      const pairs = lines.map((line) => {
         const m = line.match(logLineRe);
-        return m ? m[2] : null;
+        return m ? { zone: m[1], defect: m[2] } : null;
       });
-      const confirmed = new Set();
-      let runDefect = null;
+      const confirmed = [];
+      const seen = new Set();
+      let runPair = null;
       let runCount = 0;
-      for (const name of defectNames) {
-        if (name === runDefect) {
+      for (const p of pairs) {
+        const key = p ? p.zone + '|' + p.defect : null;
+        if (p && key === (runPair ? runPair.zone + '|' + runPair.defect : null)) {
           runCount++;
-          if (runCount >= 3) confirmed.add(runDefect);
+          if (runCount >= 3 && !seen.has(key)) {
+            seen.add(key);
+            confirmed.push(p);
+          }
         } else {
-          runDefect = name;
-          runCount = name ? 1 : 0;
+          runPair = p;
+          runCount = p ? 1 : 0;
         }
       }
-      return [...confirmed];
+      return confirmed;
     }
     function pollLogs() {
       if (isStandalone) return;
@@ -395,7 +402,7 @@
           const lines = data.lines || [];
           if (lines.length === 0) {
             logTbody.innerHTML = '<tr><td colspan="2" class="raw">No entries yet. Start analysis to log.</td></tr>';
-            confirmedTbody.innerHTML = '<tr><td class="raw">None yet.</td></tr>';
+            confirmedTbody.innerHTML = '<tr><td colspan="3" class="raw">None yet.</td></tr>';
             return;
           }
           logTbody.innerHTML = lines.map((line) => {
@@ -407,24 +414,25 @@
             return `<tr><td colspan="2" class="raw">${escapeHtml(line)}</td></tr>`;
           }).join('');
           const confirmedDefects = getDefectsWithThreeConsecutive(lines);
-          const currentSet = new Set(confirmedDefects);
-          const hasNew = confirmedDefects.some((d) => !lastConfirmedSet.has(d));
+          const currentSet = new Set(confirmedDefects.map((e) => e.zone + '|' + e.defect));
+          const hasNew = confirmedDefects.some((e) => !lastConfirmedSet.has(e.zone + '|' + e.defect));
           if (confirmedDefects.length === 0) {
-            confirmedTbody.innerHTML = '<tr><td class="raw">None yet.</td></tr>';
+            confirmedTbody.innerHTML = '<tr><td colspan="3" class="raw">None yet.</td></tr>';
             confirmedAlertEl.classList.remove('visible', 'has-new');
             lastConfirmedSet = new Set();
           } else {
-            confirmedTbody.innerHTML = confirmedDefects.map((d) =>
-              `<tr><td class="defect-name">${escapeHtml(d)}</td></tr>`
+            confirmedTbody.innerHTML = confirmedDefects.map((e, i) =>
+              `<tr><td>${i + 1}</td><td class="zone">${escapeHtml(e.zone)}</td><td class="defect-name">${escapeHtml(e.defect)}</td></tr>`
             ).join('');
-            confirmedAlertNamesEl.textContent = confirmedDefects.join(', ');
+            confirmedAlertNamesEl.textContent = confirmedDefects.map((e, i) => `${i + 1}. ${e.defect} (${e.zone})`).join('; ');
             confirmedAlertEl.classList.add('visible');
             if (hasNew) {
               confirmedAlertEl.classList.add('has-new');
               setTimeout(() => confirmedAlertEl.classList.remove('has-new'), 2000);
               if (!isStandalone && 'Notification' in window && Notification.permission === 'granted') {
+                const bodyList = confirmedDefects.map((e, i) => `${i + 1}. ${e.defect} (${e.zone})`).join('\n');
                 new Notification('Defect confirmed', {
-                  body: 'Detected: ' + confirmedDefects.join(', '),
+                  body: bodyList,
                   icon: '/favicon.ico'
                 }).catch(() => {});
               }
