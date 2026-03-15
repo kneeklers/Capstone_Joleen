@@ -254,7 +254,7 @@
       <div id="confirmed-alert" class="confirmed-alert" role="alert" aria-live="polite">
         <span class="confirmed-alert-icon" aria-hidden="true">⚠</span>
         <span class="confirmed-alert-message">
-          <span class="confirmed-alert-names" id="confirmed-alert-names"></span> — defect(s) confirmed (3 consecutive detections).
+          <span class="confirmed-alert-names" id="confirmed-alert-names"></span> — defect(s) confirmed.
         </span>
       </div>
       <div class="logs-row">
@@ -282,7 +282,7 @@
                 <tr>
                   <th>#</th>
                   <th>Zone</th>
-                  <th>Defect (3 consecutive)</th>
+                  <th>Defect (3× detected)</th>
                 </tr>
               </thead>
               <tbody id="confirmed-tbody">
@@ -370,29 +370,24 @@
 
     // Parse "[zone] name conf @ (x1,y1)-(x2,y2)"
     const logLineRe = /^\[([^\]]+)\]\s+(\S+)\s+([\d.]+)\s+@\s+\((\d+),(\d+)\)-\((\d+),(\d+)\)$/;
-    function getDefectsWithThreeConsecutive(lines) {
-      const pairs = lines.map((line) => {
+    function getDefectsShownThreeTimes(lines) {
+      const countByKey = new Map();
+      const orderSeen = [];
+      const seenKeys = new Set();
+      for (const line of lines) {
         const m = line.match(logLineRe);
-        return m ? { zone: m[1], defect: m[2] } : null;
-      });
-      const confirmed = [];
-      const seen = new Set();
-      let runPair = null;
-      let runCount = 0;
-      for (const p of pairs) {
-        const key = p ? p.zone + '|' + p.defect : null;
-        if (p && key === (runPair ? runPair.zone + '|' + runPair.defect : null)) {
-          runCount++;
-          if (runCount >= 3 && !seen.has(key)) {
-            seen.add(key);
-            confirmed.push(p);
-          }
-        } else {
-          runPair = p;
-          runCount = p ? 1 : 0;
+        if (!m) continue;
+        const zone = m[1];
+        const defect = m[2];
+        const key = zone + '|' + defect;
+        const count = (countByKey.get(key) || 0) + 1;
+        countByKey.set(key, count);
+        if (count >= 3 && !seenKeys.has(key)) {
+          seenKeys.add(key);
+          orderSeen.push({ zone, defect });
         }
       }
-      return confirmed;
+      return orderSeen;
     }
     function pollLogs() {
       if (isStandalone) return;
@@ -413,7 +408,7 @@
             }
             return `<tr><td colspan="2" class="raw">${escapeHtml(line)}</td></tr>`;
           }).join('');
-          const confirmedDefects = getDefectsWithThreeConsecutive(lines);
+          const confirmedDefects = getDefectsShownThreeTimes(lines);
           const currentSet = new Set(confirmedDefects.map((e) => e.zone + '|' + e.defect));
           const hasNew = confirmedDefects.some((e) => !lastConfirmedSet.has(e.zone + '|' + e.defect));
           if (confirmedDefects.length === 0) {
