@@ -13,8 +13,9 @@
       padding: 0.75rem 1.5rem;
       background: #ecdce0;
       color: #8a7882;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
+      overflow-x: auto;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
     }
@@ -29,7 +30,7 @@
       flex-wrap: nowrap;
       flex: 1;
       min-height: 0;
-      overflow: hidden;
+      min-width: 0;
     }
     .feed-wrap {
       background: #000;
@@ -112,11 +113,12 @@
     .zone-cell.has-defects .count { color: #22c55e; }
     .log-section {
       flex: 0 1 320px;
-      min-width: 280px;
+      min-width: 240px;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      flex-shrink: 0;
     }
     .log-section h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; color: #ccc; }
     .log-wrap {
